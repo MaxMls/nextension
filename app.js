@@ -1,4 +1,13 @@
-(function(){
+
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', start);
+} 
+else {
+	start();
+}
+
+function start(){
 	'use strict';
 
 	let thumbnailContainer = document.getElementById("thumbnail-container");
@@ -6,7 +15,7 @@
 
 	if(thumbnailContainer === null || gallerythumb === null || gallerythumb.length === 0) return;
 
-	let hrefAr = []
+	let formats = []
 
 	let sheet = (function() {
 		let style = document.createElement("style");
@@ -15,42 +24,49 @@
 		return style.sheet;
 	})();
 
-	sheet.insertRule("#thumbnail-container > img { width: 100%; min-height:40px; background: gray; }", 0);
+	sheet.insertRule("#thumbnail-container > img { width: 100%; }", 0);
+
+	let mid = document.getElementById("cover").getElementsByTagName("img")[0].src.split("/")[4]
 
 	for (let a of gallerythumb) {
-		hrefAr.push(a.href);
+		let s = a.firstElementChild.getAttribute("data-src").split("/");
+		formats.push(s[5].split('.')[1]);
+		mid = s[4];
 	}
-	thumbnailContainer.innerHTML = "";
+
+	while (thumbnailContainer.firstChild) {
+    	thumbnailContainer.removeChild(thumbnailContainer.firstChild);
+	}
 
 	let lastId = 0;
+	let timerId = null;
+	loadNextImage()
 
-	let xhr = new XMLHttpRequest();
+	function loadNextImage(){
+		if(timerId !== null) {
+			clearTimeout(timerId);
+			timerId = null;
+		}
 
-	xhr.open('GET', hrefAr[lastId], true);
-	xhr.send();
+		let image = new Image()
+		image.src = 'https://i.nhentai.net/galleries/' + mid + '/' + (lastId+1) + '.' + formats[lastId];
+		thumbnailContainer.append(image);
 
-	xhr.onreadystatechange = function() {
-		if (xhr.readyState != 4) return;
-
-		if (xhr.status != 200) {
-			setTimeout(xhr.send, 1000);
-		} 
-		else{
-			let tempDoc = document.createElement('html');
-			tempDoc.innerHTML = xhr.responseText;
-
-
-			let src = tempDoc.querySelector("#image-container").getElementsByTagName("img")[0].src;
-
-			let image = new Image()
-			image.src = src;
-			thumbnailContainer.append(image)
+		image.onload = function(){
 			lastId++;
-
-			if(lastId < hrefAr.length){
-				xhr.open('GET', hrefAr[lastId], true);
-				xhr.send();
+			if(lastId < formats.length){
+				loadNextImage()
 			}
 		}
+
+		image.onerror = function() {
+			thumbnailContainer.lastElementChild.remove()
+			timerId = setTimeout(loadNextImage, 1000);
+		}
 	}
-})()
+
+
+
+		
+	
+}
